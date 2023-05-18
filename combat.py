@@ -1,21 +1,18 @@
-import json
 import os
 import sys
-from types import FunctionType
+from datetime import timedelta
 from typing import Any, Dict, List, Optional
 from urllib.request import urlopen
-from bs4 import BeautifulSoup
-from datetime import timedelta
 
 import pydantic
+from bs4 import BeautifulSoup
 from jinja2 import Environment, FileSystemLoader
+from marvin import ai_fn, ai_model
 from prefect import flow, task
 from prefect.artifacts import create_markdown_artifact
-from prefect.utilities.hashing import hash_objects
 from prefect.context import TaskRunContext
+from prefect.utilities.hashing import hash_objects
 from readability import Document
-from marvin import ai_fn, ai_model
-
 
 GPT3 = "gpt-3.5-turbo"
 MODEL = os.environ.get("MARVIN_OPENAI_MODEL_NAME", GPT3)
@@ -86,11 +83,12 @@ class Monster(pydantic.BaseModel):
     challenge_rating: str
     special_traits: List[NamedRulesPair]
     actions: List[NamedRulesPair]
-    
+
 
 @ai_model
 class CombatStrategies(pydantic.BaseModel):
     """A list of combat strategies for a 5e monster."""
+
     strategies: List[NamedRulesPair]
 
 
@@ -153,7 +151,7 @@ def design_combat_strategy(monster: Monster):
 
     Actions the monster will take should reference the monster's abilities and
     should refer to the related 5e rules when appropriate.
-    
+
     Return the strategies in the format List[NamedRulesPair].
     """
 
