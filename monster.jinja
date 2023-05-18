@@ -1,0 +1,33 @@
+# {{ name }}
+
+|                   |        |
+|-------------------------|----------------------|
+| **Ability Scores**   | {{ability_scores}}     |
+| **AC**               | {{ac}}                 |
+| **HP**               | {{hp}}                 |
+| **Speed**            | {{speed}}              |
+| **Skills**           | {{skills}}             |
+| **Damage Resistances** | {{damage_resistances}} |
+| **Damage Immunities** | {{damage_immunities}}  |
+| **Condition Immunities** | {{condition_immunities}} |
+| **Senses**           | {{senses}}             |
+| **Languages**        | {{languages}}          |
+| **Challenge Rating** | {{challenge_rating}}   |
+
+## Special Traits
+{% for trait in special_traits %}
+### {{ trait.name }}
+{{trait.rules}}
+{% endfor %}
+
+## Actions
+{% for action in actions %}
+### {{ action.name }}
+{{action.rules}}
+{% endfor %}
+
+## Combat Strategy
+{% for strategy in strategies %}
+### {{ strategy.name }}
+{{strategy.rules}}
+{% endfor %}
