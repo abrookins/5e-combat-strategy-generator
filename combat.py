@@ -1,3 +1,4 @@
+import hashlib
 import os
 import sys
 from datetime import timedelta
@@ -9,13 +10,17 @@ from bs4 import BeautifulSoup
 from jinja2 import Environment, FileSystemLoader
 from marvin import ai_fn, ai_model
 from prefect import flow, task
+from prefect.tasks import task_input_hash
 from prefect.artifacts import create_markdown_artifact
 from prefect.context import TaskRunContext
 from prefect.utilities.hashing import hash_objects
 from readability import Document
+from slugify import slugify
+
 
 GPT3 = "gpt-3.5-turbo"
 MODEL = os.environ.get("MARVIN_OPENAI_MODEL_NAME", GPT3)
+
 
 # If we're using GPT 3.5, limit the input to 1500 tokens
 # to try and stay under the token limit.
@@ -37,19 +42,33 @@ def ai_fn_task_input_hash(
     context: "TaskRunContext", arguments: Dict[str, Any]
 ) -> Optional[str]:
     """A variation of `task_input_hash` that doesn't hash the task function's code."""
+    fn_doc = context.task.fn.__doc__ or ""
+    doc_hash = hashlib.sha256(fn_doc.encode()).hexdigest()
+
     return hash_objects(
         context.task.task_key,
+        doc_hash,
         arguments,
     )
 
 
-@task(cache_key_fn=ai_fn_task_input_hash, cache_expiration=timedelta(days=1))
+@task(
+    cache_key_fn=task_input_hash,
+    cache_expiration=timedelta(days=1),
+    retries=3,
+    retry_delay_seconds=3,
+)
 def get_page(url):
     """Get the HTML page from the URL."""
     return urlopen(url).read()
 
 
-@task(cache_key_fn=ai_fn_task_input_hash, cache_expiration=timedelta(days=1))
+@task(
+    cache_key_fn=task_input_hash,
+    cache_expiration=timedelta(days=1),
+    retries=3,
+    retry_delay_seconds=3,
+)
 def get_text(page):
     """Get the article text from the HTML page."""
     article_html = Document(page).summary()
@@ -96,6 +115,8 @@ class CombatStrategies(pydantic.BaseModel):
     name="design-monster",
     cache_key_fn=ai_fn_task_input_hash,
     cache_expiration=timedelta(days=1),
+    retries=3,
+    retry_delay_seconds=3,
 )
 @ai_fn
 def design_monster(text: str) -> str:
@@ -132,9 +153,11 @@ def design_monster(text: str) -> str:
     name="design-combat-strategy",
     cache_key_fn=ai_fn_task_input_hash,
     cache_expiration=timedelta(days=1),
+    retries=3,
+    retry_delay_seconds=3,
 )
 @ai_fn
-def design_combat_strategy(monster: Monster):
+def design_combat_strategy(monster: Monster) -> str:
     """
     Build a combat strategy for a Dungeons and Dragons fifth edition (5e)
     monster based on the input.
@@ -156,31 +179,90 @@ def design_combat_strategy(monster: Monster):
     """
 
 
-@flow
-def generate_monster_combat_strategy(url: str) -> dict:
-    text = get_text(get_page(url))
-    monster_text = design_monster(text)
+@task(
+    name="design-adventure",
+    cache_key_fn=ai_fn_task_input_hash,
+    cache_expiration=timedelta(days=1),
+    retries=3,
+    retry_delay_seconds=3,
+)
+@ai_fn
+def design_adventure(monster: Monster) -> str:
+    """
+    Build an adventure for a Dungeons and Dragons fifth edition (5e) based on the
+    input monster. The adventure should center on the monster and its lair.
 
+    Design the adventure in the style of Bruce Cordell, Monte Cook, and Wolfgang
+    Baur.
+
+    Include the following:
+
+    - A hook to get the players to the lair
+    - A description of the lair
+    - A map of the lair using MermaidJS notation, with a guide to the rooms
+    - A description of the monster's personality
+    - A description of the monster's goals
+    - A description of the monster's treasure
+    - A description of the monster's minions
+
+    Return the adventure as a Markdown document.
+    """
+
+
+@task(
+    cache_key_fn=task_input_hash,
+    cache_expiration=timedelta(days=1),
+    retries=3,
+    retry_delay_seconds=3,
+)
+def parse_monster(monster_text: str) -> Monster:
+    """Parse the monster from the text."""
     try:
-        monster = Monster(monster_text)
+        return Monster(monster_text)
     except pydantic.ValidationError as e:
         raise GenerationFailed(
             "The model failed to generate a suitable monster.", monster_text, e
         )
 
-    strategy_text = design_combat_strategy(monster)
+
+@task(
+    cache_key_fn=task_input_hash,
+    cache_expiration=timedelta(days=1),
+    retries=3,
+    retry_delay_seconds=3,
+)
+def parse_strategy(strategy_text: str) -> CombatStrategies:
+    """Parse the combat strategy from the text."""
     try:
-        strategy = CombatStrategies(strategy_text)
+        return CombatStrategies(strategy_text)
     except pydantic.ValidationError as e:
         raise GenerationFailed(
             "The model failed to generate suitable combat strategies.", strategy_text, e
         )
 
+
+@flow
+def generate_monster_combat_strategy(url: str) -> dict:
+    text = get_text(get_page(url))
+    monster_text = design_monster(text)
+    monster = parse_monster(monster_text)
+    strategy_text = design_combat_strategy(monster)
+    adventure = design_adventure(monster)
+    strategy = parse_strategy(strategy_text)
+
     create_markdown_artifact(
-        monster_template.render(**strategy.dict(), **monster.dict())
+        key=slugify(monster.name),
+        markdown=monster_template.render(**strategy.dict(), **monster.dict()),
+        description=f"Stat block and combat strategy for {monster.name}",
     )
 
-    return {"monster": monster.dict(), **strategy.dict()}
+    create_markdown_artifact(
+        key=f"{slugify(monster.name)}-adventure",
+        markdown=adventure,
+        description=f"Adventure for {monster.name}",
+    )
+
+    return {"monster": monster.dict(), **strategy.dict(), "adventure": adventure}
 
 
 if __name__ == "__main__":
