@@ -1,9 +1,9 @@
 ###
 ### A complete description of a Prefect Deployment for flow 'generate-monster-combat-strategy'
 ###
-name: generate-monster-combat-strategy
+name: generate-monster-combat-strategy-local-cloud
 description: null
-version: cdd33394c65722b0c2412b45b39573bf
+version: a3e408fdc0e6b7b9f044e7e2ea6441f3
 # The work queue that will handle this deployment's runs
 work_queue_name: default
 work_pool_name: null
@@ -42,4 +42,4 @@ parameter_openapi_schema:
   required:
   - url
   definitions: null
-timestamp: '2023-05-18T05:25:23.525621+00:00'
+timestamp: '2023-05-25T00:12:38.582759+00:00'

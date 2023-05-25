@@ -42,7 +42,7 @@ def ai_fn_task_input_hash(
     context: "TaskRunContext", arguments: Dict[str, Any]
 ) -> Optional[str]:
     """A variation of `task_input_hash` that doesn't hash the task function's code."""
-    fn_doc = context.task.fn.__doc__ or ""
+    fn_doc = context.task.fn.fn.__doc__ or ""
     doc_hash = hashlib.sha256(fn_doc.encode()).hexdigest()
 
     return hash_objects(
@@ -196,15 +196,17 @@ def design_adventure(monster: Monster) -> str:
     Baur.
 
     Include the following:
-
     - A hook to get the players to the lair
-    - A description of the lair
-    - A map of the lair using MermaidJS notation, with a guide to the rooms
+    - A short description of the lair as a whole
     - A description of the monster's personality
-    - A description of the monster's goals
-    - A description of the monster's treasure
-    - A description of the monster's minions
-
+    - A map of the lair using MermaidJS notation
+    - A description of the monster's goals. List them.
+    - A description of the monster's treasure. List it.
+    - A description of the monster's minions. List them with explicit 5e rules.
+    - A description of each room in the lair that appears in the MermaidJS map,
+      what treasure is in the room using treasure from 5e, and what minions are in
+      the room using monsters from 5e.
+    
     Return the adventure as a Markdown document.
     """
 
