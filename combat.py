@@ -41,7 +41,13 @@ class GenerationFailed(Exception):
 def ai_fn_task_input_hash(
     context: "TaskRunContext", arguments: Dict[str, Any]
 ) -> Optional[str]:
-    """A variation of `task_input_hash` that doesn't hash the task function's code."""
+    """
+    A variation of `task_input_hash` that hashes the task function's docstring
+    instead of the function's code.
+    
+    AI functions don't have code, and the signal that the function has changed
+    is actually in the docstring, where the user writes a GPT prompt.
+    """
     fn_doc = context.task.fn.fn.__doc__ or ""
     doc_hash = hashlib.sha256(fn_doc.encode()).hexdigest()
 
