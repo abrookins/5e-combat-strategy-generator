@@ -170,10 +170,6 @@ def design_combat_strategy(monster: Monster) -> str:
 
     The strategy should:
     - Reference specific actions, based on the monster's abilities, the monster will take
-      before combat
-    - Reference specific actions, based on the monster's abilities, the monster will take
-      during combat
-    - Reference specific actions, based on the monster's abilities, the monster will take
       after combat
     - Be appropriate to the creature's level of intelligence as defined by its intelligence
       ability score
